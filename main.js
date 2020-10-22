@@ -1,4 +1,118 @@
-const c = document.body.appendChild(document.createElement('canvas')).getContext('2d');
+const cnv = document.body.appendChild(document.createElement('canvas'));
+const c = cnv.getContext('2d');
+
+const pane = new Tweakpane({
+    title: 'Options',
+});
+
+// Parameter object
+const PARAMS = {
+    density: 10,
+
+    lines: true,
+    lineWidth: Math.sqrt(2),
+    lineColour: '#000',
+
+    clr: true,
+    clrPtn: 'angle',
+    clrAngle: 0,
+    clrSpeed: 1,
+    clrScale: 1,
+
+    light: true,
+    lightPtn: 'random',
+    lightAngle: 0,
+    lightSpeed: 1,
+    lightScale: 1,
+};
+
+const density = pane.addInput(PARAMS, 'density', { label: 'Density' });
+density.on('change', reset);
+
+
+const lineFolder = pane.addFolder({
+    title: 'Lines',
+});
+lineFolder.addInput(PARAMS, 'lines', { label: 'Show' });
+lineFolder.addInput(PARAMS, 'lineWidth', {
+    label: 'Width',
+    min: 0,
+    max: 50,
+    step: 0.1,
+});
+lineFolder.addInput(PARAMS, 'lineColour', { label: 'Colour' });
+
+
+const clrFolder = pane.addFolder({
+    title: 'Colours',
+});
+clrFolder.addInput(PARAMS, 'clr', {
+    label: 'Enable',
+});
+const clrPtn = clrFolder.addInput(PARAMS, 'clrPtn', {
+    label: 'Pattern',
+    options: {
+	angle: 'angle',
+	saddle: 'saddle',
+	random: 'random',
+    },
+});
+const clrAngle = clrFolder.addInput(PARAMS, 'clrAngle', {
+    label: 'Angle',
+    min: 0,
+    max: 360,
+});
+clrPtn.on('change', e => {
+    console.log(e);
+    clrAngle.hidden = e !== 'angle';
+});
+clrFolder.addInput(PARAMS, 'clrSpeed', {
+    label: 'Speed',
+    min: 0,
+    max: 10,
+    step: 0.1,
+});
+clrFolder.addInput(PARAMS, 'clrScale', {
+    label: 'Scale',
+    step: 0.1,
+    min: 0,
+});
+
+
+const lightFolder = pane.addFolder({
+    title: 'Brightness',
+});
+lightFolder.addInput(PARAMS, 'light', {
+    label: 'Enable',
+});
+const lightPtn = lightFolder.addInput(PARAMS, 'lightPtn', {
+    label: 'Pattern',
+    options: {
+	angle: 'angle',
+	saddle: 'saddle',
+	random: 'random',
+    },
+});
+const lightAngle = lightFolder.addInput(PARAMS, 'lightAngle', {
+    label: 'Angle',
+    min: 0,
+    max: 360,
+});
+lightAngle.hidden = true;
+lightPtn.on('change', e => {
+    lightAngle.hidden = e !== 'angle';
+});
+lightFolder.addInput(PARAMS, 'lightSpeed', {
+    label: 'Speed',
+    min: 0,
+    max: 10,
+    step: 0.1
+});
+lightFolder.addInput(PARAMS, 'lightScale', {
+    label: 'Scale',
+    step: 0.1,
+    min: 0,
+});
 
 var w, h;
 
@@ -152,18 +266,34 @@ class Seg {
     }
 
     draw() {
-	c.save();
-	//c.strokeStyle = '#fff';
 	c.beginPath();
 	c.moveTo(points[this.p1].x, points[this.p1].y);
 	c.lineTo(points[this.p2].x, points[this.p2].y);
 	c.stroke();
-	c.restore();
+    }
+}
+
+class Poly {
+    constructor(points, segs) {
+	this.points = points;
+	this.segs = segs;
+    }
+
+    avg() {
+	const avg = new Point(0, 0);
+	for (const p of this.points.map(p => points[p])) {
+	    avg.x += p.x;
+	    avg.y += p.y;
+	}
+	avg.x /= this.points.length;
+	avg.y /= this.points.length;
+	return avg;
     }
 }
 
 var points;
 var segs;
+var polys;
 function reset() {
     w = c.canvas.width  = innerWidth;
     h = c.canvas.height = innerHeight;
@@ -185,14 +315,16 @@ function reset() {
     points[2].segs = [1, 2];
     points[3].segs = [2, 3];
 
-    while (Math.random() < 1000/points.length) {
+    while (Math.random() < (PARAMS.density*100)/points.length) {
 	add(
 	    new Point(
-		20 + Math.random()*(w-40),
-		20 + Math.random()*(h-40)
+		Math.random()*w,
+		Math.random()*h
 	    )
 	);
     }
+
+    getPolys();
 }
 reset();
 
@@ -200,34 +332,19 @@ function drawLines(clear = true) {
     if (clear) {
 	c.clearRect(0, 0, w, h);
     }
-    c.lineWidth = 2;
+    c.lineWidth = PARAMS.lineWidth;
 
     for (let i = 0; i < segs.length; i++) {
-	c.strokeStyle = '#000';
+	c.strokeStyle = PARAMS.lineColour;
 	segs[i].draw();
     }
-
-    /*
-    for (const p of points) {
-	c.fillStyle = '#02f';
-	c.beginPath();
-	c.arc(p.x, p.y, c.lineWidth, 0, Math.PI*2);
-	c.fill();
-    }
-    */
 }
 
 function add(point) {
-    //const point = new Point(
-    //    w * Math.random(),
-    //    h * Math.random()
-    //);
     const line = Line.fromAnglePoint(
 	Math.random()*Math.PI*2,
 	point
     );
-
-    //line.draw();
 
     const intxns = [];
     for (let i = 0; i < segs.length; i++) {
@@ -283,7 +400,7 @@ function add(point) {
 }
 
 function getPolys() {
-    const polys = [];
+    polys = [];
     const polycount = {}; // associative array of segment index to polycount
 
     // for every segment
@@ -294,7 +411,7 @@ function getPolys() {
 	// find the polygons made by winding clockwise, starting from both points in the segment
 	find:
 	for (const pn of ['p1', 'p2']) {
-	    const poly = []; // indices of points in polygon, in winding order
+	    const polypts = []; // indices of points in polygon, in winding order
 	    const polysegs = []; // indices of segments in polygon
 	    let segIdx = i;
 	    let seg = segs[segIdx];
@@ -309,7 +426,7 @@ function getPolys() {
 
 		seg = segs[segIdx];
 		p = [seg.p1, seg.p2].find(el => el !== lastp);
-		poly.push(p);
+		polypts.push(p);
 		lastp = p;
 
 		cdts = points[p].segs.filter(s => s !== segIdx); // find all segments connected to the point
@@ -327,27 +444,74 @@ function getPolys() {
 	    } while (segIdx !== i);
 
 	    polysegs.forEach(ps => polycount[ps] = polycount[ps]+1 || 1);
-	    polys.push(poly);
+	    polys.push(new Poly(polypts, polysegs));
 	}
     }
-
-    return polys;
 }
 
 function drawPolys() {
-    getPolys().forEach(poly => {
-	c.fillStyle = `hsl(0, 0%, ${Math.sin(Date.now()/1000 + points[poly[0]].x + points[poly[0]].y / w / h * Math.PI*2)*50+50}%)`;
+    const t = Date.now()/10000;
+
+    polys.forEach((poly, i) => {
+	const avg = poly.avg();
+
+	let style = 'hsl(';
+
+	if (PARAMS.clr + PARAMS.light === 0) {
+	    c.fillStyle = '#fff';
+	} else {
+	    if (PARAMS.clr) {
+		switch (PARAMS.clrPtn) {
+		    case 'angle':
+			const a = PARAMS.clrAngle / 180 * Math.PI;
+			style += (t*PARAMS.clrSpeed**2 + (avg.x * Math.cos(a) + avg.y * Math.sin(a)) / (w+h) * PARAMS.clrScale) * 360;
+			break;
+		    case 'saddle':
+			style += (t*PARAMS.clrSpeed**2 + ((avg.x*2-w) * (avg.y*2-h)) / (w * h) * PARAMS.clrScale) * 360;
+			break;
+		    case 'random':
+			style += t*PARAMS.clrSpeed**2 - i * 2;
+			break;
+		}
+		style += ', 100%, ';
+	    } else {
+		style += '0, 0%, ';
+	    }
+
+	    if (PARAMS.light) {
+		switch (PARAMS.lightPtn) {
+		    case 'angle':
+			const a = PARAMS.lightAngle / 180 * Math.PI;
+			style += Math.sin(t*Math.PI*2 * PARAMS.lightSpeed**2 + (avg.x * Math.cos(a) + avg.y * Math.sin(a)) / (w + h) * Math.PI*2 * PARAMS.lightScale) * 50 + 50;
+			break;
+		    case 'saddle':
+			style += Math.sin(t*Math.PI*2 * PARAMS.lightSpeed**2 + ((avg.x*2-w) * (avg.y*2-h)) / (w * h) * Math.PI*2 * PARAMS.lightScale) * 50 + 50;
+			break;
+		    case 'random':
+			style += Math.sin(t*Math.PI*2 * PARAMS.lightSpeed**2 - i) * 50 + 50;
+			break;
+		}
+		style += '%)';
+	    } else {
+		style += '50%)';
+	    }
+
+	    c.fillStyle = style;
+	}
+
 	c.beginPath();
-	poly.forEach(p => {
+	poly.points.forEach(p => {
 	    c.lineTo(points[p].x, points[p].y);
 	});
 	c.fill();
     });
 
-    drawLines(false);
+    if (PARAMS.lines) {
+	drawLines(false);
+    }
 }
 
-window.addEventListener('mousedown', e => {
+cnv.addEventListener('mousedown', e => {
     reset();
 });
 

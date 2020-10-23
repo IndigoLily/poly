@@ -62,20 +62,21 @@ const clrAngle = clrFolder.addInput(PARAMS, 'clrAngle', {
     min: 0,
     max: 360,
 });
-clrPtn.on('change', e => {
-    console.log(e);
-    clrAngle.hidden = e !== 'angle';
-});
 clrFolder.addInput(PARAMS, 'clrSpeed', {
     label: 'Speed',
     min: 0,
     max: 10,
     step: 0.1,
 });
-clrFolder.addInput(PARAMS, 'clrScale', {
+const clrScale = clrFolder.addInput(PARAMS, 'clrScale', {
     label: 'Scale',
     step: 0.1,
     min: 0,
+});
+clrPtn.on('change', e => {
+    console.log(e);
+    clrAngle.hidden = e !== 'angle';
+    clrScale.hidden = e === 'random';
 });
 
 
@@ -98,20 +99,22 @@ const lightAngle = lightFolder.addInput(PARAMS, 'lightAngle', {
     min: 0,
     max: 360,
 });
-lightAngle.hidden = true;
-lightPtn.on('change', e => {
-    lightAngle.hidden = e !== 'angle';
-});
 lightFolder.addInput(PARAMS, 'lightSpeed', {
     label: 'Speed',
     min: 0,
     max: 10,
     step: 0.1
 });
-lightFolder.addInput(PARAMS, 'lightScale', {
+const lightScale = lightFolder.addInput(PARAMS, 'lightScale', {
     label: 'Scale',
     step: 0.1,
     min: 0,
+});
+lightAngle.hidden = true;
+lightScale.hidden = true;
+lightPtn.on('change', e => {
+    lightAngle.hidden = e !== 'angle';
+    lightScale.hidden = e === 'random';
 });
 
 var w, h;
@@ -461,16 +464,19 @@ function drawPolys() {
 	    c.fillStyle = '#fff';
 	} else {
 	    if (PARAMS.clr) {
+		const _t = t*PARAMS.clrSpeed**2;
 		switch (PARAMS.clrPtn) {
 		    case 'angle':
 			const a = PARAMS.clrAngle / 180 * Math.PI;
-			style += (t*PARAMS.clrSpeed**2 + (avg.x * Math.cos(a) + avg.y * Math.sin(a)) / (w+h) * PARAMS.clrScale) * 360;
+			const sin = Math.sin(a);
+			const cos = Math.cos(a);
+			style += (_t + (avg.x*cos + avg.y*sin) / (Math.abs(w*cos) + Math.abs(h*sin)) * PARAMS.clrScale) * 360;
 			break;
 		    case 'saddle':
-			style += (t*PARAMS.clrSpeed**2 + ((avg.x*2-w) * (avg.y*2-h)) / (w * h) * PARAMS.clrScale) * 360;
+			style += (_t + ((avg.x*2-w) * (avg.y*2-h)) / (w * h) * PARAMS.clrScale) * 360;
 			break;
 		    case 'random':
-			style += t*PARAMS.clrSpeed**2 - i * 2;
+			style += _t*360 - i * 2;
 			break;
 		}
 		style += ', 100%, ';
@@ -479,16 +485,19 @@ function drawPolys() {
 	    }
 
 	    if (PARAMS.light) {
+		const _t = t*Math.PI*2 * PARAMS.lightSpeed**2;
 		switch (PARAMS.lightPtn) {
 		    case 'angle':
 			const a = PARAMS.lightAngle / 180 * Math.PI;
-			style += Math.sin(t*Math.PI*2 * PARAMS.lightSpeed**2 + (avg.x * Math.cos(a) + avg.y * Math.sin(a)) / (w + h) * Math.PI*2 * PARAMS.lightScale) * 50 + 50;
+			const sina = Math.sin(a);
+			const cosa = Math.cos(a);
+			style += Math.sin(_t + (avg.x*cosa + avg.y*sina) / (Math.abs(w*cosa) + Math.abs(h*sina)) * Math.PI*2 * PARAMS.lightScale) * 50 + 50;
 			break;
 		    case 'saddle':
-			style += Math.sin(t*Math.PI*2 * PARAMS.lightSpeed**2 + ((avg.x*2-w) * (avg.y*2-h)) / (w * h) * Math.PI*2 * PARAMS.lightScale) * 50 + 50;
+			style += Math.sin(_t + ((avg.x*2-w) * (avg.y*2-h)) / (w * h) * Math.PI*2 * PARAMS.lightScale) * 50 + 50;
 			break;
 		    case 'random':
-			style += Math.sin(t*Math.PI*2 * PARAMS.lightSpeed**2 - i) * 50 + 50;
+			style += Math.sin(_t - i) * 50 + 50;
 			break;
 		}
 		style += '%)';

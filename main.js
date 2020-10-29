@@ -5,7 +5,6 @@ const pane = new Tweakpane({
     title: 'Options',
 });
 
-// Parameter object
 const PARAMS = {
     density: 10,
 
@@ -173,7 +172,6 @@ class Line {
     }
 
     intxn(other) {
-	//debugger;
 	if (this.isVert() && other.isVert()) { // both vertical
 	    return undefined;
 	} else if (this.isVert()) {
@@ -335,12 +333,17 @@ function drawLines(clear = true) {
     if (clear) {
 	c.clearRect(0, 0, w, h);
     }
-    c.lineWidth = PARAMS.lineWidth;
 
+    c.lineWidth = PARAMS.lineWidth;
+    c.strokeStyle = PARAMS.lineColour;
+    c.beginPath();
     for (let i = 0; i < segs.length; i++) {
-	c.strokeStyle = PARAMS.lineColour;
-	segs[i].draw();
+	const p1 = segs[i].getp1();
+	const p2 = segs[i].getp2();
+	c.moveTo(p1.x, p1.y);
+	c.lineTo(p2.x, p2.y);
     }
+    c.stroke();
 }
 
 function add(point) {
@@ -455,14 +458,22 @@ function getPolys() {
 function drawPolys() {
     const t = Date.now()/10000;
 
-    polys.forEach((poly, i) => {
-	const avg = poly.avg();
+    if (PARAMS.clr + PARAMS.light === 0) {
+	c.fillStyle = '#fff';
+	c.fillRect(0, 0, w, h);
 
-	let style = 'hsl(';
+	c.globalCompositeOperation = 'difference';
+	c.fillStyle = PARAMS.lineColour;
+	c.fillRect(0, 0, w, h);
 
-	if (PARAMS.clr + PARAMS.light === 0) {
-	    c.fillStyle = '#fff';
-	} else {
+	c.globalCompositeOperation = 'source-over';
+	drawLines(false);
+    } else {
+	polys.forEach((poly, i) => {
+	    const avg = poly.avg();
+
+	    let style = 'hsl(';
+
 	    if (PARAMS.clr) {
 		const _t = t*PARAMS.clrSpeed**2;
 		switch (PARAMS.clrPtn) {
@@ -506,17 +517,17 @@ function drawPolys() {
 	    }
 
 	    c.fillStyle = style;
-	}
 
-	c.beginPath();
-	poly.points.forEach(p => {
-	    c.lineTo(points[p].x, points[p].y);
+	    c.beginPath();
+	    poly.points.forEach(p => {
+		c.lineTo(points[p].x, points[p].y);
+	    });
+	    c.fill();
 	});
-	c.fill();
-    });
 
-    if (PARAMS.lines) {
-	drawLines(false);
+	if (PARAMS.lines) {
+	    drawLines(false);
+	}
     }
 }
 

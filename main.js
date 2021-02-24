@@ -481,13 +481,13 @@ function drawPolys() {
 			const a = PARAMS.clrAngle / 180 * Math.PI;
 			const sin = Math.sin(a);
 			const cos = Math.cos(a);
-			style += (_t + (avg.x*cos + avg.y*sin) / (Math.abs(w*cos) + Math.abs(h*sin)) * PARAMS.clrScale) * 360;
+			style += ((_t + (avg.x*cos + avg.y*sin) / (Math.abs(w*cos) + Math.abs(h*sin)) * PARAMS.clrScale) * 360) % 360;
 			break;
 		    case 'saddle':
-			style += (_t + ((avg.x*2-w) * (avg.y*2-h)) / (w * h) * PARAMS.clrScale) * 360;
+			style += ((_t + ((avg.x*2-w) * (avg.y*2-h)) / (w * h) * PARAMS.clrScale) * 360) % 360;
 			break;
 		    case 'random':
-			style += _t*360 - i * 2;
+			style += (_t*360 - i * 2) % 360;
 			break;
 		}
 		style += ', 100%, ';
